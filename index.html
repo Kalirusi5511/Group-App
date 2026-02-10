@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Group Link App</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f0f0f;
+    color: white;
+}
+
+.container {
+    max-width: 500px;
+    margin: auto;
+    padding: 20px;
+}
+
+input, button {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+}
+
+input {
+    background: #222;
+    color: white;
+}
+
+button {
+    background: #38bdf8;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.group {
+    background: #1c1c1c;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.link {
+    background: #2a2a2a;
+    padding: 8px;
+    border-radius: 6px;
+    margin-top: 5px;
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🚀 Group Link App</h2>
+
+<!-- Auth Bereich -->
+<div id="authArea">
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Passwort">
+    <button onclick="register()">Registrieren</button>
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- App Bereich -->
+<div id="appArea" class="hidden">
+
+    <button onclick="logout()">Logout</button>
+
+    <h3>Neue Gruppe</h3>
+    <input id="groupName" placeholder="Gruppenname">
+    <button onclick="createGroup()">Gruppe erstellen</button>
+
+    <h3>Gruppen</h3>
+    <div id="groups"></div>
+
+</div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+let token = null;
+let socket = null;
+
+function register() {
+    fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        })
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message || "Registriert"));
+}
+
+function login() {
+    fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.token){
+            token = data.token;
+            document.getElementById("authArea").classList.add("hidden");
+            document.getElementById("appArea").classList.remove("hidden");
+            socket = io();
+            loadGroups();
+        } else {
+            alert("Login fehlgeschlagen");
+        }
+    });
+}
+
+function logout(){
+    token = null;
+    document.getElementById("authArea").classList.remove("hidden");
+    document.getElementById("appArea").classList.add("hidden");
+}
+
+function createGroup(){
+    fetch("/api/groups/create", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+            name: document.getElementById("groupName").value
+        })
+    })
+    .then(res => res.json())
+    .then(() => loadGroups());
+}
+
+function loadGroups(){
+    fetch("/api/groups", {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const div = document.getElementById("groups");
+        div.innerHTML = "";
+        data.forEach(group => {
+            const g = document.createElement("div");
+            g.className = "group";
+            g.innerHTML = "<b>" + group.name + "</b>";
+            div.appendChild(g);
+        });
+    });
+}
+
+</script>
+
+</body>
+</html>
